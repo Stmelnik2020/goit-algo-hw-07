@@ -1,4 +1,4 @@
-from utility import AddressBook, Record, Birthday
+from addressbook import AddressBook, Record, Birthday
 
 
 def input_error(func):
