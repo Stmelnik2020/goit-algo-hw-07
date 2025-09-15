@@ -32,7 +32,7 @@ class Birthday(Field):
             date_value = datetime.strptime(value, "%d.%m.%Y").date()
         except ValueError:
             raise ValueError("Invalid date format. Use DD.MM.YYYY")
-        super().__init__(date_value)
+        super().__init__(value)
 
 
 class Record:
@@ -44,7 +44,7 @@ class Record:
     def add_phone(self, phone: str):
         self.phones.append(Phone(phone))
 
-    def add_birthday(self, birthday_date: Birthday):
+    def add_birthday(self, birthday_date: str):
         self.birthday = birthday_date
 
     def find_phone(self, searched_phone: str):
@@ -58,7 +58,7 @@ class Record:
         self.remove_phone(old_number)
         self.add_phone(new_number)
 
-    def remove_phone(self, removing_phone):
+    def remove_phone(self, removing_phone: str):
         phone = self.find_phone(removing_phone)
         if phone:
             self.phones.remove(phone)
@@ -79,39 +79,33 @@ class AddressBook(UserDict):
         if name in self.data:
             del self.data[name]
 
-    def get_upcoming_birthdays(self, users, days=7):
+    def get_upcoming_birthdays(self, days=7):
         upcoming_birthdays = []
         today = date.today()
-        for user in users:
-            birthday_this_year = user["birthday"].replace(year=today.year)
+        limit_date = today + timedelta(days=days)
+        for record in self.data.values():
+            birthday_str = getattr(record, 'birthday', None)
+            if not birthday_str:
+                continue
+            try:
+                birthday_dt_object = datetime.strptime(
+                    birthday_str.value, '%d.%m.%Y').date()
+            except ValueError:
+                continue
+            birthday_this_year = birthday_dt_object.replace(year=today.year)
             if birthday_this_year < today:
                 birthday_this_year = birthday_this_year.replace(
-                    year=today.year+1)
-            if 0 < (birthday_this_year - today).days <= days:
+                    year=today.year + 1)
+            if today <= birthday_this_year <= limit_date:
                 birthday_this_year = AddressBook.adjust_for_weekend(
                     birthday_this_year)
-                congratulation_date_str = AddressBook.date_to_string(
-                    birthday_this_year)
                 upcoming_birthdays.append(
-
-                    {"name": user["name"], "congratulation_date": congratulation_date_str})
+                    {"name": record.name.value, "congratulation_date": AddressBook.date_to_string(birthday_this_year)})
         return upcoming_birthdays
-
-    @staticmethod
-    def string_to_date(date_string):
-        return datetime.strptime(date_string, "%d.%m.%Y").date()
 
     @staticmethod
     def date_to_string(input_date):
         return input_date.strftime("%d.%m.%Y")
-
-    @staticmethod
-    def prepare_user_list(user_data):
-        prepared_list = []
-        for user in user_data:
-            prepared_list.append(
-                {"name": user["name"], "birthday": AddressBook.string_to_date(user["birthday"])})
-        return prepared_list
 
     @staticmethod
     def find_next_weekday(start_date, weekday):

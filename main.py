@@ -11,15 +11,15 @@ def input_error(func):
             return "Enter the argument for the command"
         except KeyError:
             return "Contact not defined!"
+        except AttributeError:
+            return "The contact has no date of birth!"
     return inner
 
 
 @input_error
 def parse_input(user_input: str) -> list[str]:
     """
-    takes a user input string user_input and splits it into words 
-    using the split() method. It returns the first word as the 
-    command cmd and the rest as a list of arguments *args
+    takes a user_input and splits it into commands
     """
     cmd, *args = user_input.split()
     cmd = cmd.strip().lower()
@@ -27,7 +27,10 @@ def parse_input(user_input: str) -> list[str]:
 
 
 @input_error
-def add_contact(args, book: AddressBook):
+def add_contact(args, book: AddressBook) -> str:
+    """
+    adds a contact to the address book
+    """
     name, phone, *_ = args
     record = book.find(name)
     message = "Contact updated."
@@ -41,7 +44,10 @@ def add_contact(args, book: AddressBook):
 
 
 @input_error
-def add_birthday(args, book: AddressBook):
+def add_birthday(args, book: AddressBook) -> str:
+    """
+    stores the birthday of the specified contact
+    """
     name, birthday_str, *_ = args
     record = book.find(name)
     birthday_str = Birthday(birthday_str)
@@ -52,7 +58,10 @@ def add_birthday(args, book: AddressBook):
 
 
 @input_error
-def show_birthday(args, book: AddressBook):
+def show_birthday(args, book: AddressBook) -> str:
+    """
+    returns the birthday of the specified contact
+    """
     name, *_ = args
     record = book.find(name)
     if record:
@@ -61,54 +70,53 @@ def show_birthday(args, book: AddressBook):
 
 @input_error
 def birthdays(book: AddressBook):
-    users_birthdays = []
-    for record in book.data.values():
-        if record.birthday:
-            users_birthdays.append(
-                {"name": record.name.value, "birthday": record.birthday.value})
-    upcoming = book.get_upcoming_birthdays(users_birthdays, 7)
+    """
+    displays a list of users to be greeted within the next 7 days
+    """
+    upcoming = book.get_upcoming_birthdays()
     if not upcoming:
         return "No birthdays in the next 7 days."
-    return "\n".join(f"{u['name']} : {u["congratulation_date"]}" for u in upcoming)
+    return "\n".join(f"Name {u['name']} : congratulation date :{u["congratulation_date"]}" for u in upcoming)
 
 
 @input_error
 def change_contact(args, book: AddressBook) -> str:
     """
-    stores a new phone number for the contact
-    username that already exists in the dictionary
+    changes an existing contact
     """
     name, old_phone, new_phone = args
     record = book.find(name)
     message = "Contact updated."
-    if record:
-        record.edit_phone(old_phone, new_phone)
-        return (message)
-    else:
-        raise KeyError
+    if old_phone not in [p.value for p in record.phones]:
+        return f"{old_phone} not defined!"
+    record.edit_phone(old_phone, new_phone)
+    return message
 
 
 @input_error
 def show_phone(args, book: AddressBook) -> str:
     """
-    return the phone number for the
-    specified contact username to the console
+    returns a list of phones of an existing contact
     """
     name = args[0]
     record = book.find(name)
-    if record:
-        return f"{record}"
-    else:
-        raise KeyError
+    return f"{record}"
 
 
 def show_all(book: AddressBook) -> str:
     """
-    return the phone number for all contacts
+    return the phone number and birth date for all contacts
     """
     if not book:
         return "No contacts."
-    return "\n".join(f"{name}" for name in book.values())
+    lines = []
+    for record in book.values():
+        phones = ', '.join(
+            p.value for p in record.phones) if record.phones else "no phones"
+        birthday = f' | birthday: {record.birthday.value}' if getattr(
+            record, 'birthday', None) else ""
+        lines.append(f'{record.name.value} : {phones} {birthday}')
+    return '\n'.join(lines)
 
 
 def main():
@@ -141,12 +149,15 @@ def main():
         elif command == "add":
             print(add_contact(args, book))
         # condition for all unforeseen commands
-        elif command == "add_birthday":
+        elif command == "add-birthday":
             print(add_birthday(args, book))
-        elif command == "show_birthday":
+        # command to display the birthday of the specified contact
+        elif command == "show-birthday":
             print(show_birthday(args, book))
+        # display a list of contacts whose birthday is between today and +7 days
         elif command == "birthdays":
             print(birthdays(book))
+        # invalid command message
         else:
             print("Invalid command.")
 
