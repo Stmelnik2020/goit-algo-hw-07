@@ -12,7 +12,16 @@ def input_error(func):
         except KeyError:
             return "Contact not defined!"
         except AttributeError:
-            return "The contact has no date of birth!"
+            return "Contact not defined!"
+    return inner
+
+
+def invalid_birthday(func):
+    def inner(*args, **kwargs):
+        try:
+            return func(*args, **kwargs)
+        except ValueError:
+            return "Give me name and birthday in format DD.NN.YYYY please."
     return inner
 
 
@@ -43,14 +52,13 @@ def add_contact(args, book: AddressBook) -> str:
     return message
 
 
-@input_error
+@invalid_birthday
 def add_birthday(args, book: AddressBook) -> str:
     """
     stores the birthday of the specified contact
     """
     name, birthday_str, *_ = args
     record = book.find(name)
-    birthday_str = Birthday(birthday_str)
     if record is None:
         return "Contact not defined!"
     record.add_birthday(birthday_str)
@@ -76,7 +84,7 @@ def birthdays(book: AddressBook):
     upcoming = book.get_upcoming_birthdays()
     if not upcoming:
         return "No birthdays in the next 7 days."
-    return "\n".join(f"Name {u['name']} : congratulation date :{u["congratulation_date"]}" for u in upcoming)
+    return "\n".join(f"Name {u['name']} : congratulation date: {u["congratulation_date"]}" for u in upcoming)
 
 
 @input_error
@@ -86,11 +94,7 @@ def change_contact(args, book: AddressBook) -> str:
     """
     name, old_phone, new_phone = args
     record = book.find(name)
-    message = "Contact updated."
-    if old_phone not in [p.value for p in record.phones]:
-        return f"{old_phone} not defined!"
-    record.edit_phone(old_phone, new_phone)
-    return message
+    return record.edit_phone(old_phone, new_phone)
 
 
 @input_error
@@ -109,14 +113,8 @@ def show_all(book: AddressBook) -> str:
     """
     if not book:
         return "No contacts."
-    lines = []
-    for record in book.values():
-        phones = ', '.join(
-            p.value for p in record.phones) if record.phones else "no phones"
-        birthday = f' | birthday: {record.birthday.value}' if getattr(
-            record, 'birthday', None) else ""
-        lines.append(f'{record.name.value} : {phones} {birthday}')
-    return '\n'.join(lines)
+
+    return "\n".join(str(record) for record in book.values())
 
 
 def main():

@@ -32,7 +32,10 @@ class Birthday(Field):
             date_value = datetime.strptime(value, "%d.%m.%Y").date()
         except ValueError:
             raise ValueError("Invalid date format. Use DD.MM.YYYY")
-        super().__init__(value)
+        super().__init__(date_value)
+
+    def __str__(self):
+        return f"| Birthday: {self.value.strftime("%d.%m.%Y")}"
 
 
 class Record:
@@ -45,18 +48,21 @@ class Record:
         self.phones.append(Phone(phone))
 
     def add_birthday(self, birthday_date: str):
-        self.birthday = birthday_date
+        self.birthday = Birthday(birthday_date)
 
     def find_phone(self, searched_phone: str):
         for phone in self.phones:
             if phone.value == searched_phone:
                 return phone
 
-    def edit_phone(self, old_number: str, new_number: str):
-        if not Phone.validate(new_number):
-            raise ValueError(f"{new_number} not valid phone number!")
-        self.remove_phone(old_number)
-        self.add_phone(new_number)
+    def edit_phone(self, old_phone: str, new_phone: str):
+        phone = self.find_phone(old_phone)
+        if not phone:
+            return f"{old_phone} not defined!"
+        if not Phone.validate(new_phone):
+            raise ValueError(f"{new_phone} not valid phone number!")
+        phone.value = new_phone
+        return "Contact updated!"
 
     def remove_phone(self, removing_phone: str):
         phone = self.find_phone(removing_phone)
@@ -64,8 +70,11 @@ class Record:
             self.phones.remove(phone)
 
     def __str__(self):
-        return f"Contact name: {self.name.value}, phones: {'; '.join(p.value for p in self.phones)}"
-
+        if self.birthday is None:
+            return f"Contact name: {self.name.value}, phones: {'; '.join(p.value for p in self.phones)}"
+        else:
+            return f"Contact name: {self.name.value}, phones: {'; '.join(p.value for p in self.phones)} {self.birthday}"
+   
 
 class AddressBook(UserDict):
 
@@ -87,12 +96,7 @@ class AddressBook(UserDict):
             birthday_str = getattr(record, 'birthday', None)
             if not birthday_str:
                 continue
-            try:
-                birthday_dt_object = datetime.strptime(
-                    birthday_str.value, '%d.%m.%Y').date()
-            except ValueError:
-                continue
-            birthday_this_year = birthday_dt_object.replace(year=today.year)
+            birthday_this_year = birthday_str.value.replace(year=today.year)
             if birthday_this_year < today:
                 birthday_this_year = birthday_this_year.replace(
                     year=today.year + 1)
