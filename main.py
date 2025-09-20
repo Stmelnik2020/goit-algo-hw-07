@@ -1,4 +1,5 @@
-from addressbook import AddressBook, Record, Birthday
+import pickle
+from addressbook import AddressBook, Record
 
 
 def input_error(func):
@@ -22,6 +23,8 @@ def invalid_birthday(func):
             return func(*args, **kwargs)
         except ValueError:
             return "Give me name and birthday in format DD.NN.YYYY please."
+        except AttributeError:
+            return "Contact have not a date of birth!"
     return inner
 
 
@@ -66,6 +69,7 @@ def add_birthday(args, book: AddressBook) -> str:
 
 
 @input_error
+@invalid_birthday
 def show_birthday(args, book: AddressBook) -> str:
     """
     returns the birthday of the specified contact
@@ -73,7 +77,8 @@ def show_birthday(args, book: AddressBook) -> str:
     name, *_ = args
     record = book.find(name)
     if record:
-        return f"Birthday {name} : {record.birthday.value.strftime('%d.%m.%Y')}"
+        return f"Birthday {name} : {record.birthday.value}"
+        
 
 
 @input_error
@@ -84,7 +89,7 @@ def birthdays(book: AddressBook):
     upcoming = book.get_upcoming_birthdays()
     if not upcoming:
         return "No birthdays in the next 7 days."
-    return "\n".join(f"Name {u['name']} : congratulation date: {u["congratulation_date"]}" for u in upcoming)
+    return "\n".join(f"Name {u['name']} : congratulation date: {u['congratulation_date']}" for u in upcoming)
 
 
 @input_error
@@ -104,7 +109,7 @@ def show_phone(args, book: AddressBook) -> str:
     """
     name = args[0]
     record = book.find(name)
-    return f"{record}"
+    return f"Contact name: {name}, phones: {'; '.join(p.value for p in record.phones)}"
 
 
 def show_all(book: AddressBook) -> str:
@@ -114,12 +119,32 @@ def show_all(book: AddressBook) -> str:
     if not book:
         return "No contacts."
 
-    return "\n".join(str(record) for record in book.values())
+    return str(book)
+
+
+def save_data(book: AddressBook, filename: str = 'addressbook.pkl'):
+    """
+    saves address book
+    """
+    with open(filename, 'wb') as file:
+        pickle.dump(book, file)
+
+
+def load_data(filename: str = 'addressbook.pkl') -> AddressBook:
+    """
+    loads the address book
+    """
+
+    try:
+        with open(filename, 'rb') as file:
+            return pickle.load(file)
+    except Exception:
+        return AddressBook()
 
 
 def main():
     # create an empty list for further filling
-    book = AddressBook()
+    book = load_data()
     print("Welcome to the assistant bot!")
     # an infinite loop in which the main logic of the program is processed
     while True:
@@ -130,6 +155,7 @@ def main():
         # condition for completing an infinite loop
         if command in ["close", "exit"]:
             print("Good bye!")
+            save_data(book)
             break
         # condition for making changes to an existing contact
         elif command == "change":
